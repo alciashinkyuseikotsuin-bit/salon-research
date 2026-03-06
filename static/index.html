@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>サロン向け お悩みリサーチツール</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --red: #dc2626;
+            --orange: #ea580c;
+            --yellow: #ca8a04;
+            --green: #65a30d;
+            --gray: #9ca3af;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN',
+                         'Hiragino Sans', Meiryo, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* ヘッダー */
+        header {
+            text-align: center;
+            padding: 40px 20px 30px;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin-bottom: 8px;
+        }
+
+        header p {
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
+
+        /* 検索フォーム */
+        .search-section {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 14px 18px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary);
+        }
+
+        .search-input::placeholder {
+            color: #94a3b8;
+        }
+
+        .search-btn {
+            padding: 14px 32px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+
+        .search-btn:hover { background: var(--primary-dark); }
+        .search-btn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .search-hints {
+            margin-top: 14px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .hint-tag {
+            padding: 6px 14px;
+            background: #f1f5f9;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--text-light);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .hint-tag:hover {
+            background: #e2e8f0;
+            color: var(--text);
+        }
+
+        /* ローディング */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .loading.active { display: block; }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading p {
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
+
+        /* 結果セクション */
+        .results-section {
+            display: none;
+        }
+
+        .results-section.active { display: block; }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .results-header h2 {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .results-count {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 6px 16px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: white;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* 結果カード */
+        .result-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border-left: 4px solid var(--gray);
+            transition: box-shadow 0.2s;
+        }
+
+        .result-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .result-card.priority-high { border-left-color: var(--red); }
+        .result-card.priority-medium-high { border-left-color: var(--orange); }
+        .result-card.priority-medium { border-left-color: var(--yellow); }
+        .result-card.priority-low { border-left-color: var(--green); }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            line-height: 1.5;
+            flex: 1;
+        }
+
+        .card-title a {
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .card-title a:hover {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
+        .priority-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+            color: white;
+        }
+
+        .card-text {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            margin-bottom: 14px;
+            line-height: 1.7;
+        }
+
+        .scores {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .score-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        .score-label {
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        .score-bar-container {
+            display: flex;
+            gap: 3px;
+        }
+
+        .score-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            background: #e2e8f0;
+        }
+
+        .score-dot.filled { background: var(--primary); }
+        .score-dot.urgency.filled { background: var(--red); }
+        .score-dot.depth.filled { background: var(--orange); }
+        .score-dot.complex.filled { background: #8b5cf6; }
+
+        .score-text {
+            font-weight: 600;
+            min-width: 60px;
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+
+        /* サマリー */
+        .summary-section {
+            display: none;
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .summary-section.active { display: block; }
+
+        .summary-section h3 {
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-card {
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-top: 4px;
+        }
+
+        /* テキスト入力モード */
+        .mode-switch {
+            display: flex;
+            gap: 0;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: white;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .paste-area {
+            display: none;
+            margin-top: 16px;
+        }
+
+        .paste-area.active { display: block; }
+
+        .paste-textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 14px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            resize: vertical;
+            outline: none;
+            line-height: 1.7;
+        }
+
+        .paste-textarea:focus {
+            border-color: var(--primary);
+        }
+
+        .paste-btn {
+            margin-top: 12px;
+            padding: 12px 28px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .paste-btn:hover { background: var(--primary-dark); }
+
+        /* エラー */
+        .error-msg {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: var(--red);
+        }
+
+        .error-msg.active { display: block; }
+
+        /* レスポンシブ */
+        @media (max-width: 640px) {
+            header h1 { font-size: 1.4rem; }
+            .search-form { flex-direction: column; }
+            .search-btn { width: 100%; }
+            .scores { flex-direction: column; gap: 8px; }
+            .container { padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>お悩みリサーチツール</h1>
+            <p>Yahoo!知恵袋から深い悩みを抽出・分析します</p>
+        </header>
+
+        <div class="search-section">
+            <!-- モード切り替え -->
+            <div class="mode-switch">
+                <button class="mode-btn active" data-mode="search" onclick="switchMode('search')">
+                    キーワード検索
+                </button>
+                <button class="mode-btn" data-mode="paste" onclick="switchMode('paste')">
+                    テキスト貼り付け
+                </button>
+            </div>
+
+            <!-- 検索モード -->
+            <div id="search-mode">
+                <form class="search-form" onsubmit="handleSearch(event)">
+                    <input type="text" class="search-input" id="keyword-input"
+                           placeholder="例: 顎関節症 辛い、骨盤 歪み 悩み">
+                    <button type="submit" class="search-btn" id="search-btn">
+                        リサーチ開始
+                    </button>
+                </form>
+                <div class="search-hints">
+                    <span class="hint-tag" onclick="setKeyword('顎関節症 辛い')">顎関節症</span>
+                    <span class="hint-tag" onclick="setKeyword('骨盤 歪み 悩み')">骨盤の歪み</span>
+                    <span class="hint-tag" onclick="setKeyword('自律神経 つらい')">自律神経</span>
+                    <span class="hint-tag" onclick="setKeyword('猫背 コンプレックス')">猫背</span>
+                    <span class="hint-tag" onclick="setKeyword('頭痛 毎日 辛い')">慢性頭痛</span>
+                    <span class="hint-tag" onclick="setKeyword('坐骨神経痛 歩けない')">坐骨神経痛</span>
+                    <span class="hint-tag" onclick="setKeyword('顔 歪み コンプレックス')">顔の歪み</span>
+                    <span class="hint-tag" onclick="setKeyword('O脚 恥ずかしい')">O脚</span>
+                    <span class="hint-tag" onclick="setKeyword('肌荒れ ニキビ 治らない')">ニキビ・肌荒れ</span>
+                    <span class="hint-tag" onclick="setKeyword('小顔 エラ 悩み')">小顔・エラ</span>
+                </div>
+            </div>
+
+            <!-- テキスト貼り付けモード -->
+            <div class="paste-area" id="paste-mode">
+                <textarea class="paste-textarea" id="paste-input"
+                          placeholder="Yahoo!知恵袋や他のサイトからコピーしたテキストを貼り付けてください。複数の投稿を貼り付けても分析できます。"></textarea>
+                <button class="paste-btn" onclick="handlePaste()">
+                    このテキストを分析する
+                </button>
+            </div>
+        </div>
+
+        <!-- ローディング -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p id="loading-text">Yahoo!知恵袋をリサーチ中...</p>
+        </div>
+
+        <!-- エラー -->
+        <div class="error-msg" id="error-msg"></div>
+
+        <!-- サマリー -->
+        <div class="summary-section" id="summary">
+            <h3>分析サマリー</h3>
+            <div class="summary-stats" id="summary-stats"></div>
+        </div>
+
+        <!-- 結果一覧 -->
+        <div class="results-section" id="results">
+            <div class="results-header">
+                <div>
+                    <h2>リサーチ結果</h2>
+                    <span class="results-count" id="results-count"></span>
+                </div>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all" onclick="filterResults('all')">
+                        すべて
+                    </button>
+                    <button class="filter-btn" data-filter="high" onclick="filterResults('high')">
+                        高優先のみ
+                    </button>
+                    <button class="filter-btn" data-filter="urgency" onclick="filterResults('urgency')">
+                        緊急性順
+                    </button>
+                    <button class="filter-btn" data-filter="depth" onclick="filterResults('depth')">
+                        深さ順
+                    </button>
+                    <button class="filter-btn" data-filter="complex" onclick="filterResults('complex')">
+                        コンプレックス順
+                    </button>
+                </div>
+            </div>
+            <div id="results-list"></div>
+        </div>
+    </div>
+
+    <script>
+        let allResults = [];
+
+        function switchMode(mode) {
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            document.getElementById('search-mode').style.display =
+                mode === 'search' ? 'block' : 'none';
+            document.getElementById('paste-mode').classList.toggle('active',
+                mode === 'paste');
+        }
+
+        function setKeyword(keyword) {
+            document.getElementById('keyword-input').value = keyword;
+            handleSearch(new Event('submit'));
+        }
+
+        async function handleSearch(e) {
+            e.preventDefault();
+            const keyword = document.getElementById('keyword-input').value.trim();
+            if (!keyword) return;
+
+            showLoading('Yahoo!知恵袋をリサーチ中...');
+
+            try {
+                const res = await fetch(`/api/search?keyword=${encodeURIComponent(keyword)}`);
+                if (!res.ok) throw new Error('検索に失敗しました');
+                const data = await res.json();
+
+                if (data.results && data.results.length > 0) {
+                    allResults = data.results;
+                    renderResults(allResults);
+                } else {
+                    showError('検索結果が見つかりませんでした。キーワードを変えてお試しください。');
+                }
+            } catch (err) {
+                showError('エラーが発生しました: ' + err.message);
+            }
+
+            hideLoading();
+        }
+
+        async function handlePaste() {
+            const text = document.getElementById('paste-input').value.trim();
+            if (!text) return;
+
+            showLoading('テキストを分析中...');
+
+            try {
+                const res = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text }),
+                });
+                if (!res.ok) throw new Error('分析に失敗しました');
+                const data = await res.json();
+
+                if (data.results && data.results.length > 0) {
+                    allResults = data.results;
+                    renderResults(allResults);
+                } else {
+                    showError('分析可能なテキストが見つかりませんでした。');
+                }
+            } catch (err) {
+                showError('エラーが発生しました: ' + err.message);
+            }
+
+            hideLoading();
+        }
+
+        function showLoading(msg) {
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('loading-text').textContent = msg;
+            document.getElementById('results').classList.remove('active');
+            document.getElementById('summary').classList.remove('active');
+            document.getElementById('error-msg').classList.remove('active');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('active');
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('error-msg');
+            el.textContent = msg;
+            el.classList.add('active');
+            document.getElementById('results').classList.remove('active');
+            document.getElementById('summary').classList.remove('active');
+        }
+
+        function renderResults(results) {
+            // サマリーを表示
+            renderSummary(results);
+
+            // 結果数
+            document.getElementById('results-count').textContent =
+                `${results.length}件の悩みを検出`;
+
+            // カードを生成
+            const container = document.getElementById('results-list');
+            container.innerHTML = '';
+
+            results.forEach(r => {
+                const a = r.analysis;
+                container.appendChild(createCard(r));
+            });
+
+            document.getElementById('results').classList.add('active');
+        }
+
+        function renderSummary(results) {
+            const highPriority = results.filter(r =>
+                r.analysis.total_score >= 9).length;
+            const medPriority = results.filter(r =>
+                r.analysis.total_score >= 6 && r.analysis.total_score < 9).length;
+            const avgUrgency = results.length > 0
+                ? (results.reduce((s, r) => s + r.analysis.urgency.score, 0) / results.length).toFixed(1)
+                : 0;
+            const avgDepth = results.length > 0
+                ? (results.reduce((s, r) => s + r.analysis.depth.score, 0) / results.length).toFixed(1)
+                : 0;
+
+            const container = document.getElementById('summary-stats');
+            container.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${results.length}</div>
+                    <div class="stat-label">検出された悩み</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: var(--red)">${highPriority}</div>
+                    <div class="stat-label">高優先ターゲット</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: var(--orange)">${medPriority}</div>
+                    <div class="stat-label">中優先ターゲット</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #8b5cf6">${avgUrgency} / ${avgDepth}</div>
+                    <div class="stat-label">平均 緊急性 / 深さ</div>
+                </div>
+            `;
+
+            document.getElementById('summary').classList.add('active');
+        }
+
+        function createCard(result) {
+            const a = result.analysis;
+            let priorityClass = '';
+            if (a.total_score >= 12) priorityClass = 'priority-high';
+            else if (a.total_score >= 9) priorityClass = 'priority-medium-high';
+            else if (a.total_score >= 6) priorityClass = 'priority-medium';
+            else if (a.total_score >= 3) priorityClass = 'priority-low';
+
+            const card = document.createElement('div');
+            card.className = `result-card ${priorityClass}`;
+            card.dataset.totalScore = a.total_score;
+            card.dataset.urgency = a.urgency.score;
+            card.dataset.depth = a.depth.score;
+            card.dataset.complex = a.complex.score;
+
+            const titleContent = result.url
+                ? `<a href="${escapeHtml(result.url)}" target="_blank" rel="noopener">${escapeHtml(result.title)}</a>`
+                : escapeHtml(result.title);
+
+            const textContent = result.full_text
+                ? result.full_text.substring(0, 200) + (result.full_text.length > 200 ? '...' : '')
+                : '';
+
+            card.innerHTML = `
+                <div class="card-header">
+                    <div class="card-title">${titleContent}</div>
+                    <span class="priority-badge" style="background: ${a.priority_color}">
+                        ${a.priority}
+                    </span>
+                </div>
+                ${textContent ? `<div class="card-text">${escapeHtml(textContent)}</div>` : ''}
+                <div class="scores">
+                    <div class="score-item">
+                        <span class="score-label">緊急性</span>
+                        <div class="score-bar-container">
+                            ${scoreDots(a.urgency.score, 'urgency')}
+                        </div>
+                        <span class="score-text">${a.urgency.label}</span>
+                    </div>
+                    <div class="score-item">
+                        <span class="score-label">深さ</span>
+                        <div class="score-bar-container">
+                            ${scoreDots(a.depth.score, 'depth')}
+                        </div>
+                        <span class="score-text">${a.depth.label}</span>
+                    </div>
+                    <div class="score-item">
+                        <span class="score-label">コンプレックス</span>
+                        <div class="score-bar-container">
+                            ${scoreDots(a.complex.score, 'complex')}
+                        </div>
+                        <span class="score-text">${a.complex.label}</span>
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        function scoreDots(score, type) {
+            let html = '';
+            for (let i = 1; i <= 5; i++) {
+                html += `<div class="score-dot ${type} ${i <= score ? 'filled' : ''}"></div>`;
+            }
+            return html;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function filterResults(filter) {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === filter);
+            });
+
+            let sorted = [...allResults];
+
+            switch (filter) {
+                case 'high':
+                    sorted = sorted.filter(r => r.analysis.total_score >= 6);
+                    break;
+                case 'urgency':
+                    sorted.sort((a, b) => b.analysis.urgency.score - a.analysis.urgency.score);
+                    break;
+                case 'depth':
+                    sorted.sort((a, b) => b.analysis.depth.score - a.analysis.depth.score);
+                    break;
+                case 'complex':
+                    sorted.sort((a, b) => b.analysis.complex.score - a.analysis.complex.score);
+                    break;
+                default:
+                    sorted.sort((a, b) => b.analysis.total_score - a.analysis.total_score);
+            }
+
+            const container = document.getElementById('results-list');
+            container.innerHTML = '';
+            sorted.forEach(r => container.appendChild(createCard(r)));
+
+            document.getElementById('results-count').textContent =
+                `${sorted.length}件の悩みを表示中`;
+        }
+    </script>
+</body>
+</html>
