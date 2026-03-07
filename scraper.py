@@ -1,15 +1,36 @@
 """
 Yahoo!知恵袋スクレイピングモジュール
 検索結果ページおよび個別質問ページからデータを取得する
+拡張検索：キーワードに悩み系サフィックスを付加して深い悩みを優先的に取得
 """
 
 import urllib.request
 import urllib.parse
 import re
-import json
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from html import unescape
 from typing import List, Dict, Optional
+
+
+# 深い悩みを見つけるための検索サフィックス
+# ユーザーが「腰痛」と検索 → 「腰痛 辛い」「腰痛 激痛」等で拡張検索
+DEEP_SEARCH_SUFFIXES = [
+    '',           # 元のキーワードそのまま
+    '辛い',
+    '激痛',
+    '治らない',
+    '眠れない',
+    '悪化',
+    '慢性',
+    '何年',
+    '助けて',
+    '限界',
+    '歩けない',
+    'コンプレックス',
+    '恥ずかしい',
+    '人前',
+]
 
 
 def _build_request(url: str) -> urllib.request.Request:
@@ -34,7 +55,7 @@ def _clean_html(text: str) -> str:
     return text
 
 
-def search_chiebukuro(keyword: str, num_pages: int = 2) -> List[Dict]:
+def search_chiebukuro(keyword: str, num_pages: int = 3) -> List[Dict]:
     """
     Yahoo!知恵袋でキーワード検索し、質問のリストを返す
 
@@ -50,9 +71,10 @@ def search_chiebukuro(keyword: str, num_pages: int = 2) -> List[Dict]:
 
     for page in range(1, num_pages + 1):
         encoded_keyword = urllib.parse.quote(keyword)
+        # type=tag を除去し、通常のテキスト検索にする（より多くの結果が得られる）
         url = (
             f'https://chiebukuro.yahoo.co.jp/search'
-            f'?p={encoded_keyword}&type=tag&page={page}'
+            f'?p={encoded_keyword}&page={page}'
         )
 
         try:
@@ -63,15 +85,7 @@ def search_chiebukuro(keyword: str, num_pages: int = 2) -> List[Dict]:
             print(f"[scraper] Search page {page} fetch error: {e}")
             continue
 
-        # 質問リンクを抽出
-        link_pattern = (
-            r'href="(https://detail\.chiebukuro\.yahoo\.co\.jp'
-            r'/qa/question_detail/q\d+)[^"]*"'
-        )
-        links = re.findall(link_pattern, html)
-
-        # 検索結果のタイトルとスニペットを抽出
-        # <a> タグ内のテキストからタイトルを取得
+        # 質問リンクとタイトルを抽出
         result_blocks = re.findall(
             r'<a[^>]*href="(https://detail\.chiebukuro\.yahoo\.co\.jp'
             r'/qa/question_detail/q\d+)[^"]*"[^>]*>(.*?)</a>',
@@ -102,7 +116,7 @@ def search_chiebukuro(keyword: str, num_pages: int = 2) -> List[Dict]:
             })
 
         if page < num_pages:
-            time.sleep(0.5)
+            time.sleep(0.3)
 
     return results
 
@@ -153,9 +167,62 @@ def fetch_question_detail(url: str) -> Optional[Dict]:
     }
 
 
-def search_and_fetch(keyword: str, max_details: int = 15) -> List[Dict]:
+def _fetch_detail_safe(result: Dict) -> Dict:
+    """並列取得用のラッパー（例外を握りつぶす）"""
+    detail = fetch_question_detail(result['url'])
+    if detail:
+        result['full_text'] = detail['body']
+        if not result['title'] or len(result['title']) < len(detail['title']):
+            result['title'] = detail['title']
+    return result
+
+
+def expanded_search(keyword: str, max_results: int = 100) -> List[Dict]:
     """
-    キーワードで検索し、上位の質問の詳細テキストも取得する
+    キーワードに悩み系サフィックスを付加して拡張検索する
+    「腰痛」→「腰痛 辛い」「腰痛 激痛」等で検索し、
+    深い悩みを含む投稿を幅広く取得する
+
+    Args:
+        keyword: ユーザーの検索キーワード
+        max_results: 最大取得件数
+
+    Returns:
+        重複排除済みの質問リスト
+    """
+    all_results = []
+    seen_urls = set()
+
+    for suffix in DEEP_SEARCH_SUFFIXES:
+        if len(all_results) >= max_results:
+            break
+
+        query = f'{keyword} {suffix}'.strip() if suffix else keyword
+        print(f"[scraper] 拡張検索: '{query}'")
+
+        # サフィックスなし（元キーワード）は3ページ、それ以外は2ページ
+        pages = 3 if not suffix else 2
+        results = search_chiebukuro(query, num_pages=pages)
+
+        new_count = 0
+        for r in results:
+            if r['url'] not in seen_urls and len(all_results) < max_results:
+                seen_urls.add(r['url'])
+                all_results.append(r)
+                new_count += 1
+
+        print(f"[scraper]   → {new_count}件の新規結果")
+
+        # レート制限対策
+        time.sleep(0.3)
+
+    print(f"[scraper] 合計 {len(all_results)}件の質問を取得")
+    return all_results
+
+
+def search_and_fetch(keyword: str, max_details: int = 100) -> List[Dict]:
+    """
+    拡張検索で多くの質問を取得し、並列で詳細テキストも取得する
 
     Args:
         keyword: 検索キーワード
@@ -164,26 +231,32 @@ def search_and_fetch(keyword: str, max_details: int = 15) -> List[Dict]:
     Returns:
         [{title, url, full_text}, ...]
     """
-    results = search_chiebukuro(keyword, num_pages=2)
+    # 拡張検索で多くの質問URLを取得
+    results = expanded_search(keyword, max_results=max_details)
 
-    for i, result in enumerate(results[:max_details]):
-        detail = fetch_question_detail(result['url'])
-        if detail:
-            result['full_text'] = detail['body']
-            if not result['title'] or len(result['title']) < len(detail['title']):
-                result['title'] = detail['title']
+    # 並列で詳細ページを取得（5並列）
+    print(f"[scraper] {len(results)}件の詳細を並列取得中...")
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {
+            executor.submit(_fetch_detail_safe, r): r
+            for r in results
+        }
+        for future in as_completed(futures):
+            try:
+                future.result()
+            except Exception as e:
+                print(f"[scraper] Detail fetch error: {e}")
 
-        if i < max_details - 1:
-            time.sleep(0.3)
-
+    print(f"[scraper] 詳細取得完了")
     return results
 
 
 if __name__ == '__main__':
     # テスト実行
-    results = search_and_fetch('腰痛 辛い', max_details=3)
-    for r in results[:3]:
+    results = search_and_fetch('腰痛', max_details=20)
+    for r in results[:5]:
         print(f"Title: {r['title'][:80]}")
         print(f"URL: {r['url']}")
         print(f"Text: {r['full_text'][:150]}")
         print('---')
+    print(f"\n合計: {len(results)}件")

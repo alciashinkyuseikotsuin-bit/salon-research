@@ -50,13 +50,17 @@ def api_search():
         return jsonify({'error': 'キーワードを入力してください'}), 400
 
     try:
+        import time as _time
+        start = _time.time()
         print(f"[search] キーワード: {keyword}")
 
-        raw_results = search_and_fetch(keyword, max_details=10)
-        print(f"[search] {len(raw_results)}件の投稿を取得")
+        raw_results = search_and_fetch(keyword, max_details=100)
+        elapsed = _time.time() - start
+        print(f"[search] {len(raw_results)}件の投稿を取得 ({elapsed:.1f}秒)")
 
         analyzed = analyze_results(raw_results)
-        print(f"[search] 分析完了")
+        total_elapsed = _time.time() - start
+        print(f"[search] 分析完了 (合計{total_elapsed:.1f}秒)")
 
         return jsonify({
             'keyword': keyword,

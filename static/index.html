@@ -551,7 +551,7 @@
             const keyword = document.getElementById('keyword-input').value.trim();
             if (!keyword) return;
 
-            showLoading('Yahoo!知恵袋をリサーチ中...');
+            showLoading('Yahoo!知恵袋を拡張リサーチ中...（複数パターンで深い悩みを検索しています）');
 
             try {
                 const res = await fetch(`/api/search?keyword=${encodeURIComponent(keyword)}`);
