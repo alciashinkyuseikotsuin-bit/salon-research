@@ -156,6 +156,56 @@
             font-size: 0.95rem;
         }
 
+        .progress-container {
+            max-width: 360px;
+            margin: 20px auto 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--primary), #818cf8);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .progress-stages {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 0.75rem;
+            color: var(--gray);
+        }
+
+        .progress-stage {
+            transition: color 0.3s;
+        }
+
+        .progress-stage.active {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .progress-stage.done {
+            color: var(--green);
+        }
+
+        .progress-percent {
+            text-align: center;
+            margin-top: 8px;
+            font-size: 0.85rem;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
         /* 結果セクション */
         .results-section {
             display: none;
@@ -488,6 +538,18 @@
         <div class="loading" id="loading">
             <div class="spinner"></div>
             <p id="loading-text">Yahoo!知恵袋をリサーチ中...</p>
+            <div class="progress-container" id="progress-container" style="display:none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div class="progress-stages">
+                    <span class="progress-stage" id="stage-1">検索パターン生成</span>
+                    <span class="progress-stage" id="stage-2">知恵袋を検索</span>
+                    <span class="progress-stage" id="stage-3">詳細取得</span>
+                    <span class="progress-stage" id="stage-4">分析</span>
+                </div>
+                <div class="progress-percent" id="progress-percent">0%</div>
+            </div>
         </div>
 
         <!-- エラー -->
@@ -530,6 +592,89 @@
 
     <script>
         let allResults = [];
+        let progressTimer = null;
+
+        // プログレスバー管理
+        const PROGRESS_STAGES = [
+            { pct: 0,  stage: 1, text: '検索パターンを自動生成中...' },
+            { pct: 8,  stage: 1, text: 'カテゴリを判定しました' },
+            { pct: 12, stage: 2, text: 'Yahoo!知恵袋を検索中... (1/15)' },
+            { pct: 18, stage: 2, text: 'Yahoo!知恵袋を検索中... (3/15)' },
+            { pct: 25, stage: 2, text: 'Yahoo!知恵袋を検索中... (5/15)' },
+            { pct: 33, stage: 2, text: 'Yahoo!知恵袋を検索中... (7/15)' },
+            { pct: 40, stage: 2, text: 'Yahoo!知恵袋を検索中... (9/15)' },
+            { pct: 48, stage: 2, text: 'Yahoo!知恵袋を検索中... (11/15)' },
+            { pct: 55, stage: 2, text: 'Yahoo!知恵袋を検索中... (13/15)' },
+            { pct: 60, stage: 2, text: '検索完了。詳細データ取得へ...' },
+            { pct: 65, stage: 3, text: '各投稿の詳細を取得中... (20%)' },
+            { pct: 72, stage: 3, text: '各投稿の詳細を取得中... (50%)' },
+            { pct: 80, stage: 3, text: '各投稿の詳細を取得中... (80%)' },
+            { pct: 88, stage: 3, text: '詳細取得完了。分析開始...' },
+            { pct: 92, stage: 4, text: '3軸スコアリング中...' },
+            { pct: 96, stage: 4, text: '優先度を判定中...' },
+        ];
+
+        function startProgress() {
+            const container = document.getElementById('progress-container');
+            const fill = document.getElementById('progress-fill');
+            const pctText = document.getElementById('progress-percent');
+            container.style.display = 'block';
+            fill.style.width = '0%';
+            pctText.textContent = '0%';
+
+            // ステージをリセット
+            for (let i = 1; i <= 4; i++) {
+                const el = document.getElementById('stage-' + i);
+                el.classList.remove('active', 'done');
+            }
+
+            let stepIndex = 0;
+            progressTimer = setInterval(() => {
+                if (stepIndex >= PROGRESS_STAGES.length) {
+                    clearInterval(progressTimer);
+                    progressTimer = null;
+                    return;
+                }
+                const step = PROGRESS_STAGES[stepIndex];
+                fill.style.width = step.pct + '%';
+                pctText.textContent = step.pct + '%';
+                document.getElementById('loading-text').textContent = step.text;
+
+                // ステージ表示更新
+                for (let i = 1; i <= 4; i++) {
+                    const el = document.getElementById('stage-' + i);
+                    if (i < step.stage) {
+                        el.classList.remove('active');
+                        el.classList.add('done');
+                    } else if (i === step.stage) {
+                        el.classList.add('active');
+                        el.classList.remove('done');
+                    } else {
+                        el.classList.remove('active', 'done');
+                    }
+                }
+
+                stepIndex++;
+            }, 2000);
+        }
+
+        function stopProgress() {
+            if (progressTimer) {
+                clearInterval(progressTimer);
+                progressTimer = null;
+            }
+            const fill = document.getElementById('progress-fill');
+            const pctText = document.getElementById('progress-percent');
+            fill.style.width = '100%';
+            pctText.textContent = '100%';
+
+            // 全ステージ完了
+            for (let i = 1; i <= 4; i++) {
+                const el = document.getElementById('stage-' + i);
+                el.classList.remove('active');
+                el.classList.add('done');
+            }
+        }
 
         function switchMode(mode) {
             document.querySelectorAll('.mode-btn').forEach(btn => {
@@ -551,12 +696,14 @@
             const keyword = document.getElementById('keyword-input').value.trim();
             if (!keyword) return;
 
-            showLoading('Yahoo!知恵袋を拡張リサーチ中...（複数パターンで深い悩みを検索しています）');
+            showLoading('検索パターンを自動生成中...', true);
 
             try {
                 const res = await fetch(`/api/search?keyword=${encodeURIComponent(keyword)}`);
                 if (!res.ok) throw new Error('検索に失敗しました');
                 const data = await res.json();
+
+                stopProgress();
 
                 if (data.results && data.results.length > 0) {
                     allResults = data.results;
@@ -565,6 +712,7 @@
                     showError('検索結果が見つかりませんでした。キーワードを変えてお試しください。');
                 }
             } catch (err) {
+                stopProgress();
                 showError('エラーが発生しました: ' + err.message);
             }
 
@@ -599,16 +747,22 @@
             hideLoading();
         }
 
-        function showLoading(msg) {
+        function showLoading(msg, withProgress) {
             document.getElementById('loading').classList.add('active');
             document.getElementById('loading-text').textContent = msg;
             document.getElementById('results').classList.remove('active');
             document.getElementById('summary').classList.remove('active');
             document.getElementById('error-msg').classList.remove('active');
+            if (withProgress) {
+                startProgress();
+            } else {
+                document.getElementById('progress-container').style.display = 'none';
+            }
         }
 
         function hideLoading() {
             document.getElementById('loading').classList.remove('active');
+            document.getElementById('progress-container').style.display = 'none';
         }
 
         function showError(msg) {
