@@ -292,10 +292,12 @@ def _fetch_detail_safe(result: Dict) -> Dict:
     return result
 
 
-def expanded_search(keyword: str, max_results: int = 100) -> List[Dict]:
+def expanded_search(keyword: str, max_results: int = 100, custom_suffixes: List[str] = None) -> List[Dict]:
     """
     入力キーワードのカテゴリを自動判定し、
     カテゴリに最適なサフィックスで拡張検索する
+
+    custom_suffixesが渡された場合はそれを優先使用する（AI生成パターン対応）
 
     例: 「腰痛」→ pain カテゴリ → 「腰痛 激痛」「腰痛 歩けない」等
     例: 「小顔」→ beauty カテゴリ → 「小顔 コンプレックス」「小顔 効果ない」等
@@ -303,12 +305,17 @@ def expanded_search(keyword: str, max_results: int = 100) -> List[Dict]:
     Args:
         keyword: ユーザーの検索キーワード
         max_results: 最大取得件数
+        custom_suffixes: カスタムサフィックスリスト（AI生成など）
 
     Returns:
         重複排除済みの質問リスト
     """
-    category, suffixes = _detect_category(keyword)
-    print(f"[scraper] カテゴリ '{category}' のサフィックス {len(suffixes)}個で検索開始")
+    if custom_suffixes:
+        suffixes = custom_suffixes
+        print(f"[scraper] カスタムサフィックス {len(suffixes)}個で検索開始（AI生成）")
+    else:
+        category, suffixes = _detect_category(keyword)
+        print(f"[scraper] カテゴリ '{category}' のサフィックス {len(suffixes)}個で検索開始")
 
     all_results = []
     seen_urls = set()
@@ -340,18 +347,19 @@ def expanded_search(keyword: str, max_results: int = 100) -> List[Dict]:
     return all_results
 
 
-def search_and_fetch(keyword: str, max_details: int = 100) -> List[Dict]:
+def search_and_fetch(keyword: str, max_details: int = 100, custom_suffixes: List[str] = None) -> List[Dict]:
     """
     拡張検索で多くの質問を取得し、並列で詳細テキストも取得する
 
     Args:
         keyword: 検索キーワード
         max_details: 詳細を取得する最大件数
+        custom_suffixes: カスタムサフィックスリスト（AI生成など）
 
     Returns:
         [{title, url, full_text}, ...]
     """
-    results = expanded_search(keyword, max_results=max_details)
+    results = expanded_search(keyword, max_results=max_details, custom_suffixes=custom_suffixes)
 
     # 並列で詳細ページを取得（5並列）
     print(f"[scraper] {len(results)}件の詳細を並列取得中...")

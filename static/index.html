@@ -543,7 +543,7 @@
                     <div class="progress-fill" id="progress-fill"></div>
                 </div>
                 <div class="progress-stages">
-                    <span class="progress-stage" id="stage-1">検索パターン生成</span>
+                    <span class="progress-stage" id="stage-1">🤖 AIパターン</span>
                     <span class="progress-stage" id="stage-2">知恵袋を検索</span>
                     <span class="progress-stage" id="stage-3">詳細取得</span>
                     <span class="progress-stage" id="stage-4">分析</span>
@@ -596,15 +596,17 @@
 
         // プログレスバー管理
         const PROGRESS_STAGES = [
-            { pct: 0,  stage: 1, text: '検索パターンを自動生成中...' },
-            { pct: 8,  stage: 1, text: 'カテゴリを判定しました' },
-            { pct: 12, stage: 2, text: 'Yahoo!知恵袋を検索中... (1/15)' },
-            { pct: 18, stage: 2, text: 'Yahoo!知恵袋を検索中... (3/15)' },
-            { pct: 25, stage: 2, text: 'Yahoo!知恵袋を検索中... (5/15)' },
-            { pct: 33, stage: 2, text: 'Yahoo!知恵袋を検索中... (7/15)' },
-            { pct: 40, stage: 2, text: 'Yahoo!知恵袋を検索中... (9/15)' },
-            { pct: 48, stage: 2, text: 'Yahoo!知恵袋を検索中... (11/15)' },
-            { pct: 55, stage: 2, text: 'Yahoo!知恵袋を検索中... (13/15)' },
+            { pct: 0,  stage: 1, text: '🤖 AIが検索パターンを自動生成中...' },
+            { pct: 4,  stage: 1, text: '🤖 擬音・体感表現を分析中...' },
+            { pct: 7,  stage: 1, text: '🤖 二次的損失パターンを生成中...' },
+            { pct: 10, stage: 1, text: '🤖 失敗体験・真の願望パターンを生成中...' },
+            { pct: 14, stage: 2, text: 'Yahoo!知恵袋を検索中... (1/17)' },
+            { pct: 20, stage: 2, text: '検索中... (3/17)' },
+            { pct: 26, stage: 2, text: '検索中... (5/17) 擬音・体感系' },
+            { pct: 33, stage: 2, text: '検索中... (7/17) 二次的損失系' },
+            { pct: 40, stage: 2, text: '検索中... (9/17) 失敗体験系' },
+            { pct: 48, stage: 2, text: '検索中... (11/17) 真の願望系' },
+            { pct: 55, stage: 2, text: '検索中... (14/17)' },
             { pct: 60, stage: 2, text: '検索完了。詳細データ取得へ...' },
             { pct: 65, stage: 3, text: '各投稿の詳細を取得中... (20%)' },
             { pct: 72, stage: 3, text: '各投稿の詳細を取得中... (50%)' },
@@ -696,7 +698,7 @@
             const keyword = document.getElementById('keyword-input').value.trim();
             if (!keyword) return;
 
-            showLoading('検索パターンを自動生成中...', true);
+            showLoading('🤖 AIが検索パターンを自動生成中...', true);
 
             try {
                 const res = await fetch(`/api/search?keyword=${encodeURIComponent(keyword)}`);

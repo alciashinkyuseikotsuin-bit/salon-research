@@ -20,6 +20,7 @@ from flask import Flask, request, jsonify, send_from_directory
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from scraper import search_and_fetch
 from analyzer import analyze_results, analyze_concern
+from ai_search_patterns import generate_search_patterns_ai
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, static_folder=os.path.join(BASE_DIR, 'static'))
@@ -54,7 +55,16 @@ def api_search():
         start = _time.time()
         print(f"[search] キーワード: {keyword}")
 
-        raw_results = search_and_fetch(keyword, max_details=100)
+        # AI検索パターン生成（擬音・二次的損失・失敗体験・真の願望）
+        patterns = generate_search_patterns_ai(keyword)
+        pattern_elapsed = _time.time() - start
+        print(f"[search] パターン生成完了 ({pattern_elapsed:.1f}秒, source={patterns['source']})")
+
+        raw_results = search_and_fetch(
+            keyword,
+            max_details=100,
+            custom_suffixes=patterns['suffixes'],
+        )
         elapsed = _time.time() - start
         print(f"[search] {len(raw_results)}件の投稿を取得 ({elapsed:.1f}秒)")
 
