@@ -853,9 +853,10 @@
                 ? result.full_text.substring(0, 200) + (result.full_text.length > 200 ? '...' : '')
                 : '';
 
+            const srcBadge = result.source==='komachi' ? '<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:.65rem;font-weight:600;background:#fef3c7;color:#92400e;margin-left:6px">発言小町</span>' : '<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:.65rem;font-weight:600;background:#dbeafe;color:#1e40af;margin-left:6px">知恵袋</span>';
             card.innerHTML = `
                 <div class="card-header">
-                    <div class="card-title">${titleContent}</div>
+                    <div class="card-title">${titleContent}${srcBadge}</div>
                     <span class="priority-badge" style="background: ${a.priority_color}">
                         ${a.priority}
                     </span>

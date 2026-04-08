@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from scraper import search_and_fetch
 from analyzer import analyze_results, analyze_concern
 from ai_search_patterns import generate_search_patterns_ai
+from komachi_scraper import search_komachi
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, static_folder=os.path.join(BASE_DIR, 'static'))
@@ -60,22 +61,46 @@ def api_search():
         pattern_elapsed = _time.time() - start
         print(f"[search] パターン生成完了 ({pattern_elapsed:.1f}秒, source={patterns['source']})")
 
-        raw_results = search_and_fetch(
-            keyword,
-            max_details=100,
-            custom_suffixes=patterns['suffixes'],
-        )
-        elapsed = _time.time() - start
-        print(f"[search] {len(raw_results)}件の投稿を取得 ({elapsed:.1f}秒)")
+        # Yahoo!知恵袋と発言小町を並列取得
+        from concurrent.futures import ThreadPoolExecutor
 
-        analyzed = analyze_results(raw_results)
+        def _fetch_chiebukuro():
+            return search_and_fetch(keyword, max_details=100, custom_suffixes=patterns['suffixes'])
+
+        def _fetch_komachi():
+            return search_komachi(keyword, max_results=15)
+
+        chiebukuro_results = []
+        komachi_results = []
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            f1 = executor.submit(_fetch_chiebukuro)
+            f2 = executor.submit(_fetch_komachi)
+            try:
+                chiebukuro_results = f1.result(timeout=50)
+            except Exception as e:
+                print(f"[search] 知恵袋エラー: {e}")
+            try:
+                komachi_results = f2.result(timeout=50)
+            except Exception as e:
+                print(f"[search] 発言小町エラー: {e}")
+
+        elapsed = _time.time() - start
+        print(f"[search] 知恵袋{len(chiebukuro_results)}件 + 発言小町{len(komachi_results)}件 ({elapsed:.1f}秒)")
+
+        for r in chiebukuro_results:
+            r['source'] = 'chiebukuro'
+            r['source_label'] = 'Yahoo!知恵袋'
+
+        analyzed = analyze_results(chiebukuro_results + komachi_results)
         total_elapsed = _time.time() - start
-        print(f"[search] 分析完了 (合計{total_elapsed:.1f}秒)")
+        print(f"[search] 分析完了: {len(analyzed)}件 (合計{total_elapsed:.1f}秒)")
 
         return jsonify({
             'keyword': keyword,
             'results': analyzed,
             'count': len(analyzed),
+            'sources': {'chiebukuro': len(chiebukuro_results), 'komachi': len(komachi_results)},
         })
 
     except Exception as e:
