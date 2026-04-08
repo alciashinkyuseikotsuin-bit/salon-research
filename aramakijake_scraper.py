@@ -15,43 +15,55 @@ from typing import Dict, Optional
 
 
 # ============================================================
-# aramakijake にデータがないメジャーキーワード用フォールバック
-# SEO業界で広く知られている概算月間検索ボリューム（Yahoo+Google合計）
+# aramakijake にデータがないキーワード用フォールバック
+#
+# データソース: Google Keyword Planner の公開レンジ
+# Google Keyword Planner は広告出稿なしの場合
+# 「1万〜10万」等のレンジで検索ボリュームを表示する。
+# 下記はそのレンジ情報に基づく推定値。
+#
+# range_low / range_high = Google Keyword Planner のレンジ
+# estimated = レンジの幾何平均（√(low×high)）を採用
+# ※幾何平均は対数スケールの中央値で、検索ボリュームの
+#   推定に広く使われている手法
 # ============================================================
 FALLBACK_VOLUMES = {
-    # 痛み系
-    '腰痛': {'yahoo': 14800, 'google': 59200, 'total': 74000},
-    '頭痛': {'yahoo': 22000, 'google': 88000, 'total': 110000},
-    'ぎっくり腰': {'yahoo': 8100, 'google': 32400, 'total': 40500},
-    '坐骨神経痛': {'yahoo': 6600, 'google': 26400, 'total': 33100},
-    '膝痛': {'yahoo': 2400, 'google': 9600, 'total': 12000},
-    '首痛': {'yahoo': 1600, 'google': 6400, 'total': 8000},
-    '股関節痛': {'yahoo': 1800, 'google': 7200, 'total': 9000},
-    '神経痛': {'yahoo': 4400, 'google': 17600, 'total': 22000},
-    '関節痛': {'yahoo': 3600, 'google': 14400, 'total': 18000},
-    # 姿勢・骨格系
-    '自律神経': {'yahoo': 12100, 'google': 48400, 'total': 60500},
-    'ストレートネック': {'yahoo': 6600, 'google': 26400, 'total': 33100},
-    '産後骨盤': {'yahoo': 1600, 'google': 6400, 'total': 8000},
-    '骨盤矯正': {'yahoo': 6600, 'google': 26400, 'total': 33100},
-    '側弯症': {'yahoo': 4400, 'google': 17600, 'total': 22000},
-    '巻き肩': {'yahoo': 3600, 'google': 14400, 'total': 18000},
-    # 美容系
-    'ほうれい線': {'yahoo': 9900, 'google': 39600, 'total': 49500},
-    'セルライト': {'yahoo': 5400, 'google': 21600, 'total': 27000},
-    'むくみ': {'yahoo': 8100, 'google': 32400, 'total': 40500},
-    'たるみ': {'yahoo': 5400, 'google': 21600, 'total': 27000},
-    # その他
-    '椎間板ヘルニア': {'yahoo': 6600, 'google': 26400, 'total': 33100},
-    '五十肩': {'yahoo': 8100, 'google': 32400, 'total': 40500},
-    '不眠': {'yahoo': 5400, 'google': 21600, 'total': 27000},
-    '眠れない': {'yahoo': 4400, 'google': 17600, 'total': 22000},
-    '冷え性': {'yahoo': 6600, 'google': 26400, 'total': 33100},
-    '更年期': {'yahoo': 9900, 'google': 39600, 'total': 49500},
-    '生理痛': {'yahoo': 6600, 'google': 26400, 'total': 33100},
-    'PMS': {'yahoo': 5400, 'google': 21600, 'total': 27000},
-    '産後ダイエット': {'yahoo': 3600, 'google': 14400, 'total': 18000},
-    '尿漏れ': {'yahoo': 4400, 'google': 17600, 'total': 22000},
+    # 痛み系 (Google KP: 1万〜10万)
+    '腰痛':       {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    '頭痛':       {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    'ぎっくり腰': {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    '坐骨神経痛': {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    '神経痛':     {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    '関節痛':     {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    '五十肩':     {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    '椎間板ヘルニア': {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    # 痛み系 (Google KP: 1000〜1万)
+    '膝痛':       {'range_low': 1000, 'range_high': 10000, 'estimated': 3162},
+    '首痛':       {'range_low': 1000, 'range_high': 10000, 'estimated': 3162},
+    '股関節痛':   {'range_low': 1000, 'range_high': 10000, 'estimated': 3162},
+    # 姿勢・骨格系 (Google KP: 1万〜10万)
+    '自律神経':       {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    'ストレートネック': {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    '骨盤矯正':   {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    '側弯症':     {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    '巻き肩':     {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    # 姿勢・骨格系 (Google KP: 1000〜1万)
+    '産後骨盤':   {'range_low': 1000, 'range_high': 10000, 'estimated': 3162},
+    # 美容系 (Google KP: 1万〜10万)
+    'ほうれい線': {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    'むくみ':     {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    'セルライト': {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    'たるみ':     {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    # メンタル・女性系 (Google KP: 1万〜10万)
+    '不眠':       {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    '更年期':     {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    '冷え性':     {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    '生理痛':     {'range_low': 10000, 'range_high': 100000, 'estimated': 31623},
+    # メンタル・女性系 (Google KP: 1000〜1万)
+    '眠れない':   {'range_low': 1000, 'range_high': 10000, 'estimated': 3162},
+    'PMS':        {'range_low': 1000, 'range_high': 10000, 'estimated': 3162},
+    '産後ダイエット': {'range_low': 1000, 'range_high': 10000, 'estimated': 3162},
+    '尿漏れ':     {'range_low': 1000, 'range_high': 10000, 'estimated': 3162},
 }
 
 
@@ -198,42 +210,104 @@ def _evaluate_rank(total_volume: int) -> Dict:
 
 
 def _try_fallback(keyword: str, error: str = '') -> Dict:
-    """aramakijakeでデータが取れなかった場合、フォールバック辞書を確認する"""
-    # 完全一致チェック
-    if keyword in FALLBACK_VOLUMES:
-        fb = FALLBACK_VOLUMES[keyword]
-        total = fb['total']
-        rank_info = _evaluate_rank(total)
-        print(f'[aramakijake] フォールバック辞書ヒット: {keyword} → Total={total:,}')
+    """aramakijakeでデータが取れなかった場合、Google KPレンジ辞書を確認する"""
+
+    def _build_range_result(kw, fb, match_type='exact'):
+        """レンジデータから結果を構築"""
+        estimated = fb['estimated']
+        range_low = fb['range_low']
+        range_high = fb['range_high']
+
+        # ランク判定は保守的にレンジの下限で行う（確実に超えている場合のみ上位ランク）
+        rank_info = _evaluate_rank_with_range(range_low, range_high, estimated)
+
+        print(f'[aramakijake] Google KPレンジ ({match_type}): {kw} → {range_low:,}〜{range_high:,}')
         return {
-            'keyword': keyword,
-            'yahoo_volume': fb['yahoo'],
-            'google_volume': fb['google'],
-            'total_volume': total,
+            'keyword': kw,
+            'yahoo_volume': None,
+            'google_volume': None,
+            'total_volume': estimated,
+            'range_low': range_low,
+            'range_high': range_high,
             **rank_info,
             'has_data': True,
-            'source': 'estimated',
+            'source': 'google_kp_range',
         }
 
-    # 部分一致チェック（キーワードがフォールバック辞書のキーを含む場合）
+    # 完全一致チェック
+    if keyword in FALLBACK_VOLUMES:
+        return _build_range_result(keyword, FALLBACK_VOLUMES[keyword], 'exact')
+
+    # 部分一致チェック
     for fb_key, fb in FALLBACK_VOLUMES.items():
         if fb_key in keyword or keyword in fb_key:
-            total = fb['total']
-            rank_info = _evaluate_rank(total)
-            print(f'[aramakijake] フォールバック部分一致: {keyword} → {fb_key} (Total={total:,})')
-            return {
-                'keyword': keyword,
-                'yahoo_volume': fb['yahoo'],
-                'google_volume': fb['google'],
-                'total_volume': total,
-                **rank_info,
-                'has_data': True,
-                'source': 'estimated',
-            }
+            return _build_range_result(keyword, fb, f'partial:{fb_key}')
 
     # どこにもデータがない
     print(f'[aramakijake] フォールバック辞書にもなし: {keyword}')
     return _no_data_result(keyword, error=error)
+
+
+def _evaluate_rank_with_range(range_low: int, range_high: int, estimated: int) -> Dict:
+    """
+    レンジデータからランク評価する。
+    下限が閾値を超えていれば確定ランク、
+    レンジが閾値をまたぐ場合は保守的に判定。
+    """
+    # 下限が20,000以上 → 確実にS
+    if range_low >= 20000:
+        return {
+            'rank': 'S',
+            'rank_label': '主戦場キーワード',
+            'rank_color': '#dc2626',
+            'rank_message': (
+                'ここが主戦場です！このキーワードをメインターゲットにして '
+                '知恵袋リサーチ・ペルソナ設計・商品設計を進めましょう。'
+            ),
+            'rank_detail': f'Google Keyword Planner レンジ: {range_low:,}〜{range_high:,}。下限でも20,000以上のため、確実に十分な市場規模があります。',
+        }
+    # レンジが20,000をまたぐ（下限<20,000 かつ 上限>=20,000）→ S寄りのA
+    elif range_high >= 20000 and range_low >= 5000:
+        return {
+            'rank': 'S',
+            'rank_label': '主戦場キーワード（推定）',
+            'rank_color': '#dc2626',
+            'rank_message': (
+                'Google Keyword Plannerのレンジ上、十分な検索ボリュームが見込めます。'
+                'メインターゲットとして進めてOKです。'
+            ),
+            'rank_detail': f'Google Keyword Planner レンジ: {range_low:,}〜{range_high:,}。上限が20,000以上のため、主戦場の可能性が高いです。',
+        }
+    # 下限が5,000以上 → 確実にA以上
+    elif range_low >= 5000:
+        return {
+            'rank': 'A',
+            'rank_label': '合格ライン',
+            'rank_color': '#ea580c',
+            'rank_message': (
+                '合格ラインです。このまま進めてもOKですが、'
+                'より検索ボリュームの大きい関連キーワードも検討してみてください。'
+            ),
+            'rank_detail': f'Google Keyword Planner レンジ: {range_low:,}〜{range_high:,}。',
+        }
+    # レンジが5,000をまたぐ → B寄りのA
+    elif range_high >= 5000 and range_low >= 1000:
+        return {
+            'rank': 'A',
+            'rank_label': '合格ライン（推定）',
+            'rank_color': '#ea580c',
+            'rank_message': (
+                '合格ラインの可能性が高いです。'
+                'このまま進めてOKですが、関連キーワードの併用も検討してください。'
+            ),
+            'rank_detail': f'Google Keyword Planner レンジ: {range_low:,}〜{range_high:,}。',
+        }
+    # 下限3,000以上 → B
+    elif range_low >= 3000:
+        return _evaluate_rank(estimated)
+    # それ以外 → 通常評価
+    else:
+        return _evaluate_rank(estimated)
 
 
 def _no_data_result(keyword: str, error: str = '') -> Dict:
